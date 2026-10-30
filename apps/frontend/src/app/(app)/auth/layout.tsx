@@ -28,11 +28,11 @@ export default async function AuthLayout({
           </div>
         </div>
         <div className="text-[36px] flex-1 pt-[88px] hidden lg:flex flex-col items-center">
+          {/* PostPilot (user, 2026-10-30): own name and line instead of Postiz's "20,000+ entrepreneurs" claim. */}
           <div className="text-center">
-            Over <span className="text-[42px] text-[#FC69FF]">20,000+</span>{' '}
-            Entrepreneurs use
+            Your posts, on <span className="text-[42px] text-[#FC69FF]">autopilot</span>.
             <br />
-            Postiz To Grow Their Social Presence
+            Schedule, publish and track every video in one place.
           </div>
           <TestimonialComponent />
         </div>
