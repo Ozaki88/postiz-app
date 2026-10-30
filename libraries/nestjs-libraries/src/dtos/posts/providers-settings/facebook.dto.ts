@@ -99,9 +99,9 @@ export class FacebookDto {
   @IsUrl()
   url?: string;
 
-  @IsIn(['post', 'story'])
+  @IsIn(['post', 'story', 'reel'])
   @IsOptional()
-  post_type?: 'post' | 'story';
+  post_type?: 'post' | 'story' | 'reel';
 
   // Optional Facebook background preset for text-only posts. Kept permissive
   // (@IsString rather than @IsIn) so existing posts without the field still

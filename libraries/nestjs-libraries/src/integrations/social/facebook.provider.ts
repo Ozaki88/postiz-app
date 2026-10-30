@@ -57,6 +57,11 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
         return 'Story should have at least one media';
       }
     }
+    if (settings?.post_type === 'reel') {
+      if (firstPost?.length !== 1 || !hasExtension(firstPost[0].path, 'mp4')) {
+        return 'A reel needs exactly one video';
+      }
+    }
     return true;
   }
 
@@ -833,7 +838,62 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
 
     let finalId = '';
     let finalUrl = '';
-    if (hasExtension(firstPost?.media?.[0]?.path, 'mp4')) {
+    if (firstPost?.settings?.post_type === 'reel') {
+      // Reels Publishing API: start an upload, let Facebook fetch the hosted file, then publish it.
+      const { video_id } = await (
+        await this.fetch(
+          `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${id}/video_reels?upload_phase=start&access_token=${accessToken}`,
+          { method: 'POST' },
+          'start reel upload'
+        )
+      ).json();
+
+      await this.fetch(
+        `https://rupload.facebook.com/video-upload/${META_GRAPH_API_VERSION}/${video_id}`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `OAuth ${accessToken}`,
+            file_url: firstPost.media![0].path,
+          },
+        },
+        'upload reel'
+      );
+
+      await this.fetch(
+        `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${id}/video_reels?access_token=${accessToken}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            upload_phase: 'finish',
+            video_id,
+            video_state: 'PUBLISHED',
+            description: firstPost.message,
+          }),
+        },
+        'publish reel'
+      );
+
+      // The cover chosen in Postiz becomes the reel's preferred thumbnail.
+      const cover = (firstPost?.media?.[0] as any)?.thumbnail;
+      if (cover) {
+        try {
+          const img = await (await fetch(cover)).blob();
+          const form = new FormData();
+          form.append('source', img, 'cover.jpg');
+          form.append('is_preferred', 'true');
+          await fetch(`https://graph.facebook.com/v20.0/${video_id}/thumbnails?access_token=${accessToken}`, { method: 'POST', body: form });
+        } catch (e) {
+          console.log('facebook reel cover failed', e);
+        }
+      }
+
+      finalUrl = 'https://www.facebook.com/reel/' + video_id;
+      finalId = video_id;
+    } else if (hasExtension(firstPost?.media?.[0]?.path, 'mp4')) {
       const {
         id: videoId,
         permalink_url,
