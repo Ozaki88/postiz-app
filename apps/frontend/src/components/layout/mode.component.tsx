@@ -1,57 +1,102 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import useCookie from 'react-use-cookie';
 import EventEmitter from 'events';
 
 export const modeEmitter = new EventEmitter();
 
+// Freya: a theme picker instead of the dark / light toggle (user, 2026-10-30). Each theme is a stock mode (dark or
+// light, which the rest of Postiz listens to through modeEmitter) plus an optional skin class on <body>, styled in
+// app/themes.scss.
+const THEMES = [
+  { id: 'aurora', label: 'Aurora Glass', mode: 'dark', skin: 'skin-aurora', swatch: 'linear-gradient(135deg,#7c5cff,#ff4fa3)' },
+  { id: 'neon', label: 'Neon Cyber', mode: 'dark', skin: 'skin-neon', swatch: 'linear-gradient(135deg,#c6ff00,#00f0ff)' },
+  { id: 'sunset', label: 'Sunset Pop', mode: 'dark', skin: 'skin-sunset', swatch: 'linear-gradient(135deg,#ffb347,#ff3d77)' },
+  { id: 'luxe', label: 'Warm Luxe', mode: 'light', skin: 'skin-luxe', swatch: 'linear-gradient(135deg,#f5efe3,#b8893a)' },
+  { id: 'dark', label: 'Classic dark', mode: 'dark', skin: '', swatch: '#0e0e0e' },
+  { id: 'light', label: 'Classic light', mode: 'light', skin: '', swatch: '#f0f2f4' },
+] as const;
+const SKINS = THEMES.map((t) => t.skin).filter(Boolean) as string[];
+
 const ModeComponent = () => {
   const [mode, setMode] = useCookie('mode', 'dark');
+  const [themeId, setThemeId] = useCookie('theme', 'aurora');
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  const theme = THEMES.find((t) => t.id === themeId) || THEMES[0];
 
-  const changeMode = useCallback(() => {
-    modeEmitter.emit('mode', mode === 'dark' ? 'light' : 'dark');
-    setMode(mode === 'dark' ? 'light' : 'dark');
-  }, [mode]);
+  const pick = useCallback(
+    (id: string) => {
+      const t = THEMES.find((x) => x.id === id) || THEMES[0];
+      setThemeId(t.id);
+      if (t.mode !== mode) {
+        modeEmitter.emit('mode', t.mode);
+        setMode(t.mode);
+      }
+      setOpen(false);
+    },
+    [mode]
+  );
 
   useEffect(() => {
-    document.body.classList.remove('dark', 'light');
-    document.body.classList.add(mode);
-  }, [mode]);
+    document.body.classList.remove('dark', 'light', ...SKINS);
+    document.body.classList.add(theme.mode);
+    if (theme.skin) document.body.classList.add(theme.skin);
+    if (theme.mode !== mode) setMode(theme.mode);
+  }, [theme, mode]);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (box.current && !box.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
   return (
-    <div onClick={changeMode} className="select-none cursor-pointer">
-      {mode === 'dark' ? (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="22"
-          height="22"
-          viewBox="0 0 22 22"
-          fill="none"
-        >
+    <div ref={box} className="relative select-none">
+      <div
+        onClick={() => setOpen(!open)}
+        className="cursor-pointer flex items-center"
+        title={`Theme: ${theme.label}`}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none">
           <path
-            d="M10.75 1V3M10.75 19V21M2.75 11H0.75M5.06412 5.31412L3.6499 3.8999M16.4359 5.31412L17.8501 3.8999M5.06412 16.69L3.6499 18.1042M16.4359 16.69L17.8501 18.1042M20.75 11H18.75M15.75 11C15.75 13.7614 13.5114 16 10.75 16C7.98858 16 5.75 13.7614 5.75 11C5.75 8.23858 7.98858 6 10.75 6C13.5114 6 15.75 8.23858 15.75 11Z"
+            d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.9 1.8-1.9 0-.5-.2-.9-.5-1.3-.3-.3-.5-.8-.5-1.3 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3Z"
             stroke="currentColor"
             strokeWidth="1.5"
-            strokeLinecap="round"
             strokeLinejoin="round"
           />
+          <circle cx="7.5" cy="11" r="1.3" fill="currentColor" />
+          <circle cx="10" cy="7" r="1.3" fill="currentColor" />
+          <circle cx="15" cy="7.5" r="1.3" fill="currentColor" />
         </svg>
-      ) : (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
+      </div>
+      {open && (
+        <div
+          className="absolute end-0 top-[34px] z-[1000] min-w-[200px] rounded-[12px] p-[6px] bg-newBgColorInner border border-newBorder"
+          style={{ boxShadow: 'var(--menu-shadow)' }}
         >
-          <path
-            d="M21.625 12.9011C20.2967 15.231 17.7898 16.8019 14.916 16.8019C10.6539 16.8019 7.19884 13.3468 7.19884 9.08473C7.19884 6.21071 8.76993 3.70363 11.1001 2.37549C6.20501 2.83962 2.37561 6.96182 2.37561 11.9784C2.37561 17.306 6.69447 21.6248 12.0221 21.6248C17.0384 21.6248 21.1605 17.7959 21.625 12.9011Z"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+          <div className="px-[10px] py-[6px] text-[12px] text-textItemBlur">Theme</div>
+          {THEMES.map((t) => (
+            <div
+              key={t.id}
+              onClick={() => pick(t.id)}
+              className={`flex items-center gap-[10px] px-[10px] py-[8px] rounded-[8px] cursor-pointer text-[14px] hover:bg-boxHover ${
+                t.id === theme.id ? 'font-[600]' : ''
+              }`}
+            >
+              <span
+                className="inline-block w-[18px] h-[18px] rounded-full"
+                style={{ background: t.swatch, boxShadow: '0 0 0 1px rgba(128,128,128,.35)' }}
+              />
+              <span className="flex-1">{t.label}</span>
+              {t.id === theme.id && <span>✓</span>}
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

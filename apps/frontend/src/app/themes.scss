@@ -1,0 +1,316 @@
+// Freya themes for Postiz (user, 2026-10-30: "redesign Postiz ... CRAZY WOW", then "make all of them as option for theme").
+// The theme picker in the top bar (components/layout/mode.component.tsx) puts one skin class on <body> next to the
+// stock dark / light class: skin-aurora, skin-neon, skin-sunset (dark based) or skin-luxe (light based). No skin class
+// = stock Postiz.
+// Each skin only sets --sk-* tokens and the stock --new-* / --color-* variables; the shared rules below use them.
+// `:root body.skin-x` because colors.scss sets the stock values on `:root .dark` / `:root .light`, which would win.
+// No backdrop-filter on panels on purpose: it makes fixed-position children (menus, modals) position against the
+// panel instead of the window. Glass comes from translucent fills, light edges and the moving background.
+
+// ---------- Aurora Glass: night sky, drifting purple / teal / pink aurora, glass panels ----------
+:root body.skin-aurora {
+  --sk-page: #07060f;
+  --sk-panel: rgba(20, 16, 40, 0.72);
+  --sk-panel-2: rgba(30, 24, 58, 0.78);
+  --sk-edge: rgba(255, 255, 255, 0.09);
+  --sk-accent: #7c5cff;
+  --sk-accent-2: #ff4fa3;
+  --sk-grad: linear-gradient(135deg, #7c5cff 0%, #b44cff 50%, #ff4fa3 100%);
+  --sk-on-accent: #fff;
+  --sk-glow: 0 6px 24px rgba(124, 92, 255, 0.45);
+  --sk-glow-hover: 0 10px 34px rgba(255, 79, 163, 0.55);
+  --sk-ring: rgba(124, 92, 255, 0.55);
+  --sk-sky:
+    radial-gradient(40% 34% at 20% 26%, rgba(124, 92, 255, 0.78), transparent 70%),
+    radial-gradient(36% 32% at 80% 20%, rgba(255, 79, 163, 0.58), transparent 70%),
+    radial-gradient(42% 38% at 60% 84%, rgba(25, 211, 197, 0.45), transparent 70%);
+  --sk-vignette: radial-gradient(120% 90% at 50% 40%, transparent 50%, rgba(4, 2, 12, 0.55) 100%);
+}
+
+// ---------- Neon Cyber: pitch black, cyan and lime neon, a faint grid ----------
+:root body.skin-neon {
+  --sk-page: #020406;
+  --sk-panel: rgba(4, 10, 14, 0.86);
+  --sk-panel-2: rgba(6, 16, 22, 0.9);
+  --sk-edge: rgba(0, 255, 240, 0.28);
+  --sk-accent: #00f0ff;
+  --sk-accent-2: #c6ff00;
+  --sk-grad: linear-gradient(135deg, #c6ff00 0%, #00f0ff 100%);
+  --sk-on-accent: #001014;
+  --sk-glow: 0 0 18px rgba(0, 240, 255, 0.55), 0 0 2px rgba(198, 255, 0, 0.9);
+  --sk-glow-hover: 0 0 30px rgba(198, 255, 0, 0.7), 0 0 4px rgba(0, 240, 255, 1);
+  --sk-ring: rgba(0, 240, 255, 0.7);
+  --sk-sky:
+    linear-gradient(rgba(0, 240, 255, 0.06) 1px, transparent 1px) 0 0 / 44px 44px,
+    linear-gradient(90deg, rgba(0, 240, 255, 0.06) 1px, transparent 1px) 0 0 / 44px 44px,
+    radial-gradient(35% 30% at 15% 20%, rgba(0, 240, 255, 0.22), transparent 70%),
+    radial-gradient(30% 28% at 85% 80%, rgba(198, 255, 0, 0.16), transparent 70%);
+  --sk-vignette: radial-gradient(120% 90% at 50% 40%, transparent 45%, rgba(0, 0, 0, 0.85) 100%);
+}
+
+// ---------- Sunset Pop: plum night, orange to pink, chunky and bouncy ----------
+:root body.skin-sunset {
+  --sk-page: #170812;
+  --sk-panel: rgba(44, 14, 32, 0.74);
+  --sk-panel-2: rgba(60, 18, 40, 0.8);
+  --sk-edge: rgba(255, 170, 120, 0.16);
+  --sk-accent: #ff7a18;
+  --sk-accent-2: #ff3d77;
+  --sk-grad: linear-gradient(135deg, #ffb347 0%, #ff7a18 35%, #ff3d77 75%, #ff0080 100%);
+  --sk-on-accent: #fff;
+  --sk-glow: 0 8px 26px rgba(255, 90, 60, 0.45);
+  --sk-glow-hover: 0 12px 36px rgba(255, 0, 128, 0.55);
+  --sk-ring: rgba(255, 122, 24, 0.6);
+  --sk-sky:
+    radial-gradient(40% 34% at 20% 25%, rgba(255, 122, 24, 0.45), transparent 70%),
+    radial-gradient(36% 32% at 80% 30%, rgba(255, 0, 128, 0.40), transparent 70%),
+    radial-gradient(42% 36% at 55% 85%, rgba(255, 196, 0, 0.28), transparent 70%);
+  --sk-vignette: radial-gradient(120% 90% at 50% 40%, transparent 40%, rgba(15, 3, 10, 0.75) 100%);
+}
+
+// ---------- Warm Luxe: cream, gold and sage, serif headings (light based) ----------
+:root body.skin-luxe {
+  --sk-page: #f5efe3;
+  --sk-panel: rgba(255, 253, 248, 0.86);
+  --sk-panel-2: rgba(250, 245, 235, 0.92);
+  --sk-edge: rgba(176, 141, 87, 0.32);
+  --sk-accent: #b8893a;
+  --sk-accent-2: #7d9a7e;
+  --sk-grad: linear-gradient(135deg, #d8b45f 0%, #b8893a 55%, #9c6b2e 100%);
+  --sk-on-accent: #fffaf0;
+  --sk-glow: 0 6px 20px rgba(156, 107, 46, 0.28);
+  --sk-glow-hover: 0 10px 28px rgba(156, 107, 46, 0.38);
+  --sk-ring: rgba(184, 137, 58, 0.55);
+  --sk-sky:
+    radial-gradient(40% 35% at 18% 22%, rgba(216, 180, 95, 0.30), transparent 70%),
+    radial-gradient(38% 34% at 82% 78%, rgba(125, 154, 126, 0.28), transparent 70%);
+  --sk-vignette: none;
+
+  --new-back-drop: rgba(60, 45, 25, 0.45);
+  --new-settings: var(--sk-panel-2);
+  --new-border: rgba(176, 141, 87, 0.22);
+  --new-bgColor: transparent;
+  --new-bgColorInner: var(--sk-panel);
+  --new-sep: rgba(176, 141, 87, 0.28);
+  --new-bgLineColor: rgba(176, 141, 87, 0.14);
+  --new-textItemFocused: #8a5f22;
+  --new-textItemBlur: #8a7f70;
+  --new-boxFocused: rgba(216, 180, 95, 0.22);
+  --new-blockSeparator: rgba(176, 141, 87, 0.14);
+  --new-btn-simple: rgba(176, 141, 87, 0.12);
+  --new-btn-text: #2e2820;
+  --new-btn-primary: #b8893a;
+  --new-ai-btn: #7d9a7e;
+  --new-box-hover: rgba(216, 180, 95, 0.14);
+  --new-table-border: rgba(176, 141, 87, 0.2);
+  --new-table-header: rgba(250, 245, 235, 0.9);
+  --new-table-text: #7a6f60;
+  --new-table-text-focused: #8a5f22;
+  --new-big-strips: rgba(250, 245, 235, 0.7);
+  --new-col-color: rgba(176, 141, 87, 0.1);
+  --color-primary: rgba(255, 253, 248, 0.9);
+  --color-forth: #b8893a;
+  --color-seventh: #9c6b2e;
+  color: #2e2820;
+}
+body.skin-luxe h1,
+body.skin-luxe h2,
+body.skin-luxe h3,
+body.skin-luxe .text-\[24px\],
+body.skin-luxe .text-\[20px\] {
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Georgia, 'Times New Roman', serif;
+  letter-spacing: -0.01em;
+}
+
+// ---------- Dark skins share these panel colors ----------
+:root body.skin-aurora,
+:root body.skin-neon,
+:root body.skin-sunset {
+  --new-back-drop: rgba(5, 3, 15, 0.72);
+  --new-settings: var(--sk-panel-2);
+  --new-border: var(--sk-edge);
+  --new-bgColor: transparent;
+  --new-bgColorInner: var(--sk-panel);
+  --new-sep: rgba(255, 255, 255, 0.12);
+  --new-bgLineColor: rgba(255, 255, 255, 0.06);
+  --new-textItemFocused: rgba(255, 255, 255, 0.12);
+  --new-textItemBlur: #b3adc9;
+  --new-blockSeparator: rgba(255, 255, 255, 0.07);
+  --new-btn-simple: rgba(255, 255, 255, 0.08);
+  --new-btn-primary: var(--sk-accent);
+  --new-ai-btn: var(--sk-accent-2);
+  --new-box-hover: rgba(255, 255, 255, 0.07);
+  --new-table-border: rgba(255, 255, 255, 0.08);
+  --new-table-header: rgba(255, 255, 255, 0.045);
+  --new-table-text: #aea8c4;
+  --new-table-text-focused: var(--sk-accent-2);
+  --new-small-strips: rgba(255, 255, 255, 0.03);
+  --new-big-strips: rgba(255, 255, 255, 0.025);
+  --new-col-color: rgba(255, 255, 255, 0.06);
+  --new-menu-dots: #b3adc9;
+  --menu-shadow: 0 24px 70px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--sk-edge);
+  --popup-color: rgba(8, 4, 20, 0.6);
+  --color-primary: rgba(12, 10, 24, 0.82);
+  --color-secondary: rgba(16, 12, 30, 0.8);
+  --color-third: rgba(14, 11, 26, 0.8);
+  --color-forth: var(--sk-accent);
+  --color-seventh: var(--sk-accent-2);
+  --color-input: rgba(255, 255, 255, 0.05);
+  --color-input-text: #b3adc9;
+}
+
+// ---------- Shared rules for every skin ----------
+body[class*='skin-'] {
+  background: var(--sk-page) !important;
+}
+// The moving background and a vignette so text stays readable.
+body[class*='skin-']::before,
+body[class*='skin-']::after {
+  content: '';
+  position: fixed;
+  inset: -25%;
+  z-index: -1;
+  pointer-events: none;
+}
+body[class*='skin-']::before {
+  background: var(--sk-sky);
+  filter: blur(36px) saturate(130%);
+  animation: sk-drift 28s ease-in-out infinite alternate;
+}
+body.skin-neon::before {
+  filter: none;
+  inset: 0;
+  animation: sk-grid 18s linear infinite;
+}
+body[class*='skin-']::after {
+  background: var(--sk-vignette);
+}
+@keyframes sk-drift {
+  0% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+  50% { transform: translate3d(4%, -3%, 0) rotate(8deg) scale(1.08); }
+  100% { transform: translate3d(-4%, 3%, 0) rotate(-6deg) scale(1.04); }
+}
+@keyframes sk-grid {
+  from { background-position: 0 0, 0 0, 0 0, 0 0; }
+  to { background-position: 0 44px, 44px 0, 0 0, 0 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body[class*='skin-']::before { animation: none; }
+}
+
+// Postiz hard-codes some colors in its markup: full-page and panel darks, its purple and pink.
+body[class*='skin-'] .bg-\[\#0E0E0E\],
+body[class*='skin-'] .bg-\[\#0e0e0e\],
+body[class*='skin-'] .bg-\[\#0B0A0A\] {
+  background-color: transparent !important;
+}
+body[class*='skin-'] .bg-\[\#1A1919\],
+body[class*='skin-'] .bg-\[\#1a1919\],
+body[class*='skin-'] .bg-\[\#2A2929\],
+body[class*='skin-'] .bg-\[\#3A3939\] {
+  background-color: var(--sk-panel) !important;
+}
+
+// Glass panels: a light top edge and a soft shadow.
+body[class*='skin-'] .bg-newBgColorInner,
+body[class*='skin-'] .bg-newSettings,
+body[class*='skin-'] .bg-primary,
+body[class*='skin-'] .bg-sixth,
+body[class*='skin-'] .bg-\[\#1A1919\],
+body[class*='skin-'] .bg-\[\#1a1919\] {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 10px 40px rgba(0, 0, 0, 0.25);
+}
+body.skin-neon .bg-newBgColorInner,
+body.skin-neon .bg-newSettings,
+body.skin-neon .bg-\[\#1A1919\],
+body.skin-neon .bg-\[\#1a1919\] {
+  box-shadow: 0 0 0 1px var(--sk-edge), 0 0 22px rgba(0, 240, 255, 0.1);
+}
+body.skin-luxe .bg-newBgColorInner,
+body.skin-luxe .bg-newSettings,
+body.skin-luxe .bg-primary {
+  box-shadow: 0 0 0 1px var(--sk-edge), 0 10px 30px rgba(120, 90, 40, 0.1);
+}
+
+// Primary buttons and accents: the skin's gradient with a glow.
+body[class*='skin-'] .bg-btnPrimary,
+body[class*='skin-'] .bg-forth,
+body[class*='skin-'] .bg-seventh,
+body[class*='skin-'] .bg-\[\#612BD3\],
+body[class*='skin-'] .bg-\[\#612bd3\],
+body[class*='skin-'] .bg-\[\#7B3FF2\],
+body[class*='skin-'] .bg-\[\#5520CB\] {
+  background-image: var(--sk-grad) !important;
+  color: var(--sk-on-accent) !important;
+  box-shadow: var(--sk-glow), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: box-shadow 0.25s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.25s ease;
+}
+body[class*='skin-'] .bg-btnPrimary:hover,
+body[class*='skin-'] .bg-forth:hover,
+body[class*='skin-'] .bg-seventh:hover,
+body[class*='skin-'] .bg-\[\#612BD3\]:hover,
+body[class*='skin-'] .bg-\[\#612bd3\]:hover,
+body[class*='skin-'] .hover\:bg-\[\#5520CB\]:hover {
+  background-image: var(--sk-grad) !important;
+  box-shadow: var(--sk-glow-hover), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+body.skin-sunset .bg-btnPrimary:hover,
+body.skin-sunset .bg-forth:hover,
+body.skin-sunset .bg-\[\#612BD3\]:hover {
+  transform: translateY(-2px) scale(1.03);
+}
+body[class*='skin-'] .bg-\[\#FC69FF\],
+body[class*='skin-'] .bg-\[\#D82D7E\],
+body[class*='skin-'] .bg-\[\#FF3EA2\] {
+  background-color: var(--sk-accent-2) !important;
+}
+body[class*='skin-'] .text-\[\#612BD3\],
+body[class*='skin-'] .text-\[\#612bd3\],
+body[class*='skin-'] .text-\[\#FC69FF\] {
+  color: var(--sk-accent-2) !important;
+}
+
+// Simple buttons and hover rows pick up the skin's light.
+body[class*='skin-'] .bg-btnSimple:hover,
+body[class*='skin-'] .hover\:bg-boxHover:hover {
+  box-shadow: 0 0 0 1px var(--sk-ring), 0 0 18px var(--sk-ring);
+}
+
+// Sunset: chunkier corners.
+body.skin-sunset .rounded-\[8px\] { border-radius: 14px !important; }
+body.skin-sunset .rounded-\[12px\] { border-radius: 20px !important; }
+// Neon: sharp corners and monospace headings.
+body.skin-neon .rounded-\[8px\],
+body.skin-neon .rounded-\[12px\] { border-radius: 4px !important; }
+body.skin-neon h1,
+body.skin-neon h2,
+body.skin-neon h3 {
+  font-family: ui-monospace, 'Cascadia Code', 'SF Mono', Consolas, monospace;
+  letter-spacing: 0.04em;
+}
+
+// Inputs: a glowing focus ring.
+body[class*='skin-'] input:focus,
+body[class*='skin-'] textarea:focus,
+body[class*='skin-'] select:focus,
+body[class*='skin-'] [contenteditable='true']:focus {
+  box-shadow: 0 0 0 2px var(--sk-ring), 0 0 22px var(--sk-ring) !important;
+}
+
+// Selection and scrollbars in the skin's colors.
+body[class*='skin-'] ::selection {
+  background: var(--sk-accent-2);
+  color: var(--sk-on-accent);
+}
+body[class*='skin-'] * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--sk-accent) transparent;
+}
+body[class*='skin-'] ::-webkit-scrollbar { width: 8px; height: 8px; }
+body[class*='skin-'] ::-webkit-scrollbar-thumb { background: var(--sk-grad); border-radius: 99px; }
+body[class*='skin-'] ::-webkit-scrollbar-track { background: transparent; }
+
+// Luxe is light: hard-coded white text (auth pages) would vanish on cream.
+body.skin-luxe .text-white:not(.bg-btnPrimary):not(.bg-forth):not(.bg-\[\#612BD3\]):not(.bg-\[\#612bd3\]) { color: #2e2820 !important; }
