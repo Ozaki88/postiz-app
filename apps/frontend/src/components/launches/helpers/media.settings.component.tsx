@@ -317,7 +317,10 @@ export const MediaComponentInner: FC<{
   const newFetch = useFetch();
   const modals = useModals();
   const [newThumbnail, setNewThumbnail] = useState<string | null>(null);
-  const [isEditingThumbnail, setIsEditingThumbnail] = useState(false);
+  // A video with no cover yet opens straight on the frame picker.
+  const [isEditingThumbnail, setIsEditingThumbnail] = useState(
+    (media?.path || '').indexOf('mp4') > -1 && !media?.thumbnail
+  );
   const [altText, setAltText] = useState<string>(media?.alt || '');
   const [loading, setLoading] = useState(false);
   const [thumbnail, setThumbnail] = useState<string | null>(
