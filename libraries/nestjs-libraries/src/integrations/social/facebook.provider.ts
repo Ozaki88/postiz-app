@@ -859,6 +859,20 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
         )
       ).json();
 
+      // The cover chosen in Postiz (a frame or a picture) becomes the video's preferred thumbnail.
+      const cover = (firstPost?.media?.[0] as any)?.thumbnail;
+      if (cover && videoId) {
+        try {
+          const img = await (await fetch(cover)).blob();
+          const form = new FormData();
+          form.append('source', img, 'cover.jpg');
+          form.append('is_preferred', 'true');
+          await fetch(`https://graph.facebook.com/v20.0/${videoId}/thumbnails?access_token=${accessToken}`, { method: 'POST', body: form });
+        } catch (e) {
+          console.log('facebook cover failed', e);
+        }
+      }
+
       finalUrl = 'https://www.facebook.com/reel/' + videoId;
       finalId = videoId;
     } else {

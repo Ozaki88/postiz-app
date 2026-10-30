@@ -875,6 +875,31 @@ export const MultiMediaComponent: FC<{
     }
   }, [changeMedia, t]);
 
+  // Media settings (alt text, video cover) for one attached file; also opened by the cover button under videos.
+  const openMediaSettings = useCallback(
+    (media: any) => {
+      modals.openModal({
+        title: hasExtension(media?.path, 'mp4') ? 'Edit cover' : t('media_settings', 'Media Settings'),
+        size: '720px',
+        children: (close: () => void) => (
+          <MediaComponentInner
+            media={media as any}
+            onClose={close}
+            onSelect={(value: any) => {
+              onChange({
+                target: {
+                  name: 'upload',
+                  value: currentMedia.map((p) => (p.id === media.id ? { ...p, ...value } : p)),
+                },
+              });
+            }}
+          />
+        ),
+      });
+    },
+    [currentMedia, onChange, t]
+  );
+
   return (
     <>
       <div className="b1 flex flex-col gap-[8px] mobile:gap-[16px] rounded-bl-[8px] select-none w-full">
@@ -896,34 +921,7 @@ export const MultiMediaComponent: FC<{
 
                     <div className="w-full h-full relative group">
                       <div
-                        onClick={async () => {
-                          modals.openModal({
-                            title: t('media_settings', 'Media Settings'),
-                            size: '720px',
-                            children: (close) => (
-                              <MediaComponentInner
-                                media={media as any}
-                                onClose={close}
-                                onSelect={(value: any) => {
-                                  onChange({
-                                    target: {
-                                      name: 'upload',
-                                      value: currentMedia.map((p) => {
-                                        if (p.id === media.id) {
-                                          return {
-                                            ...p,
-                                            ...value,
-                                          };
-                                        }
-                                        return p;
-                                      }),
-                                    },
-                                  });
-                                }}
-                              />
-                            ),
-                          });
-                        }}
+                        onClick={() => openMediaSettings(media)}
                         className="absolute top-[50%] left-[50%] -translate-x-[50%] -translate-y-[50%] bg-black/80 rounded-[10px] opacity-0 group-hover:opacity-100 transition-opacity z-[9]"
                       >
                         <MediaSettingsIcon className="cursor-pointer relative z-[200]" />
@@ -947,6 +945,22 @@ export const MultiMediaComponent: FC<{
             </ReactSortable>
           )}
         </div>
+        {!!currentMedia?.some((p) => hasExtension(p?.path, 'mp4')) && (
+          <div className="flex gap-[8px] px-[12px] mobile:px-0 flex-wrap">
+            {currentMedia
+              .filter((p) => hasExtension(p?.path, 'mp4'))
+              .map((p) => (
+                <button
+                  key={'cover-' + p.id}
+                  type="button"
+                  onClick={() => openMediaSettings(p)}
+                  className="h-[34px] rounded-[8px] bg-newColColor px-[12px] text-[13px] font-[600] text-textColor"
+                >
+                  {(p as any).thumbnail ? 'Edit cover' : 'Choose cover'}
+                </button>
+              ))}
+          </div>
+        )}
         {/* on phones the info stays with the post, the tools can move to the bottom */}
         {information && (
           <div className="hidden mobile:flex justify-end">{information}</div>

@@ -87,8 +87,10 @@ export const useMediaSettings = () => {
   }, []);
 };
 
+// Edit cover (Instagram style): a big preview of the chosen frame, a filmstrip of the whole video to drag along, and
+// "Add from camera roll" for a picture of your own. timestampMs is null for a camera-roll picture.
 export const CreateThumbnail: FC<{
-  onSelect: (blob: Blob, timestampMs: number) => void;
+  onSelect: (blob: Blob, timestampMs: number | null) => void;
   media:
     | {
         id: string;
@@ -96,6 +98,7 @@ export const CreateThumbnail: FC<{
         path: string;
         thumbnail?: string;
         alt?: string;
+        thumbnailTimestamp?: number;
       }
     | undefined;
   altText?: string;
@@ -104,104 +107,108 @@ export const CreateThumbnail: FC<{
   const { onSelect, media } = props;
   const { backendUrl } = useVariables();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [frames, setFrames] = useState<string[]>([]);
+  const dragging = useRef(false);
+  const FRAME_COUNT = 8;
+  const src = media
+    ? backendUrl + '/public/stream?url=' + encodeURIComponent(media.path)
+    : '';
+
+  // The filmstrip: FRAME_COUNT small frames spread over the video, drawn from a second, hidden copy of it.
+  const buildStrip = useCallback(
+    async (d: number) => {
+      const v = document.createElement('video');
+      v.crossOrigin = 'anonymous';
+      v.muted = true;
+      v.preload = 'auto';
+      v.src = src;
+      await new Promise<void>((ok) => {
+        v.onloadeddata = () => ok();
+        v.onerror = () => ok();
+      });
+      const c = document.createElement('canvas');
+      const out: string[] = [];
+      for (let i = 0; i < FRAME_COUNT; i++) {
+        const t = (d * (i + 0.5)) / FRAME_COUNT;
+        await new Promise<void>((ok) => {
+          v.onseeked = () => ok();
+          v.currentTime = t;
+        });
+        c.width = 90;
+        c.height = Math.round((90 * (v.videoHeight || 16)) / (v.videoWidth || 9));
+        try {
+          c.getContext('2d')!.drawImage(v, 0, 0, c.width, c.height);
+          out.push(c.toDataURL('image/jpeg', 0.6));
+        } catch {
+          out.push('');
+        }
+        setFrames([...out]);
+      }
+    },
+    [src]
+  );
 
   const handleLoadedMetadata = useCallback(() => {
-    setDuration(videoRef?.current?.duration);
+    const d = videoRef?.current?.duration || 0;
+    setDuration(d);
     setIsLoaded(true);
-  }, []);
+    const start = Math.min(d, (media?.thumbnailTimestamp || 0) / 1000);
+    if (videoRef.current) videoRef.current.currentTime = start;
+    setCurrentTime(start);
+    buildStrip(d);
+  }, [buildStrip, media?.thumbnailTimestamp]);
 
-  const handleTimeUpdate = useCallback(() => {
-    setCurrentTime(videoRef?.current?.currentTime);
-  }, []);
+  // Dragging (mouse or finger) along the filmstrip picks the frame under the pointer.
+  const seekTo = useCallback(
+    (clientX: number) => {
+      const box = stripRef.current?.getBoundingClientRect();
+      if (!box || !duration) return;
+      const ratio = Math.min(1, Math.max(0, (clientX - box.left) / box.width));
+      const t = ratio * duration;
+      if (videoRef.current) videoRef.current.currentTime = t;
+      setCurrentTime(t);
+    },
+    [duration]
+  );
 
-  const handleSeek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const time = parseFloat(e.target.value);
-    if (videoRef.current) {
-      videoRef.current.currentTime = time;
-      setCurrentTime(time);
-    }
-  }, []);
-
-  const captureFrame = useCallback(async () => {
+  const captureFrame = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
     setIsCapturing(true);
-
     try {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-
-      if (!ctx) {
-        setIsCapturing(false);
-        return;
-      }
-
-      // Set canvas dimensions to match video
+      const canvas = document.createElement('canvas');
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-
-      // Draw current frame to canvas
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      // Get timestamp in milliseconds
-      const timestampMs = Math.round(currentTime * 1000);
-
-      // Convert canvas to blob
+      canvas.getContext('2d')!.drawImage(video, 0, 0, canvas.width, canvas.height);
       canvas.toBlob(
         (blob: Blob | null) => {
-          if (blob) {
-            onSelect(blob, timestampMs);
-          }
+          if (blob) onSelect(blob, Math.round(currentTime * 1000));
           setIsCapturing(false);
         },
         'image/jpeg',
-        0.8
+        0.9
       );
     } catch (error) {
       console.error('Error capturing frame:', error);
+      alert('Unable to capture this frame. Try another one, or add a picture from your camera roll.');
       setIsCapturing(false);
-
-      // Fallback: try to capture using a different approach
-      try {
-        const video = videoRef.current;
-        if (video) {
-          // Create a temporary canvas element
-          const tempCanvas = document.createElement('canvas');
-          const tempCtx = tempCanvas.getContext('2d');
-
-          if (tempCtx) {
-            tempCanvas.width = video.videoWidth;
-            tempCanvas.height = video.videoHeight;
-            tempCtx.drawImage(video, 0, 0);
-
-            // Get timestamp in milliseconds
-            const timestampMs = Math.round(currentTime * 1000);
-
-            tempCanvas.toBlob(
-              (blob: Blob | null) => {
-                if (blob) {
-                  onSelect(blob, timestampMs);
-                }
-                setIsCapturing(false);
-              },
-              'image/jpeg',
-              0.8
-            );
-          }
-        }
-      } catch (fallbackError) {
-        console.error('Fallback capture also failed:', fallbackError);
-        alert(
-          'Unable to capture frame. This might be due to CORS restrictions on the video source.'
-        );
-        setIsCapturing(false);
-      }
     }
   }, [onSelect, currentTime]);
+
+  const fromCameraRoll = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) onSelect(file, null);
+      e.target.value = '';
+    },
+    [onSelect]
+  );
 
   const formatTime = useCallback((seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -210,82 +217,77 @@ export const CreateThumbnail: FC<{
   }, []);
 
   if (!media) return null;
+  const pct = duration ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className="flex flex-col space-y-4">
-      <div className="relative bg-black rounded-lg overflow-hidden">
+    <div className="flex flex-col gap-[16px] items-center w-full">
+      <p className="text-sm text-textColor text-center opacity-80">
+        Select a cover image from your video or camera roll.
+      </p>
+      <div className="relative bg-black rounded-[16px] overflow-hidden w-full max-w-[300px] aspect-[9/16] max-h-[55vh]">
         <video
           ref={videoRef}
-          src={
-            backendUrl + '/public/stream?url=' + encodeURIComponent(media.path)
-          }
-          className="w-full h-[200px] object-contain"
+          src={src}
+          className="w-full h-full object-cover"
           onLoadedMetadata={handleLoadedMetadata}
-          onTimeUpdate={handleTimeUpdate}
           muted
-          preload="metadata"
+          playsInline
+          preload="auto"
           crossOrigin="anonymous"
         />
-        <canvas ref={canvasRef} className="hidden" />
       </div>
 
       {isLoaded && (
-        <>
-          <div className="flex flex-col space-y-2">
-            <input
-              type="range"
-              min="0"
-              max={duration}
-              step="0.1"
-              value={currentTime}
-              onChange={handleSeek}
-              className="w-full h-2 bg-fifth rounded-lg appearance-none cursor-pointer slider"
-              style={{
-                background: `linear-gradient(to right, #4f46e5 0%, #4f46e5 ${
-                  (currentTime / duration) * 100
-                }%, #374151 ${(currentTime / duration) * 100}%, #374151 100%)`,
-              }}
-            />
-            <div className="flex justify-between text-sm text-textColor">
-              <span>{formatTime(currentTime)}</span>
-              <span>{formatTime(duration)}</span>
+        <div className="w-full flex flex-col gap-[6px]">
+          <div
+            ref={stripRef}
+            className="relative w-full h-[72px] rounded-[10px] overflow-hidden bg-fifth touch-none select-none cursor-pointer"
+            onPointerDown={(e) => {
+              dragging.current = true;
+              (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+              seekTo(e.clientX);
+            }}
+            onPointerMove={(e) => dragging.current && seekTo(e.clientX)}
+            onPointerUp={() => (dragging.current = false)}
+            onPointerCancel={() => (dragging.current = false)}
+          >
+            <div className="absolute inset-0 flex">
+              {Array.from({ length: FRAME_COUNT }).map((_, i) => (
+                <div key={i} className="flex-1 h-full bg-black/40">
+                  {frames[i] && (
+                    <img src={frames[i]} alt="" className="w-full h-full object-cover opacity-60" draggable={false} />
+                  )}
+                </div>
+              ))}
             </div>
+            <div
+              className="absolute top-0 h-full w-[48px] -translate-x-1/2 rounded-[8px] border-[3px] border-[#4f46e5] shadow-[0_0_0_2000px_rgba(0,0,0,0.25)] pointer-events-none"
+              style={{ left: `clamp(24px, ${pct}%, calc(100% - 24px))` }}
+            />
           </div>
-
-          <div className="flex justify-center">
-            <button
-              onClick={captureFrame}
-              disabled={isCapturing}
-              className="bg-forth text-white px-6 py-2 rounded-lg hover:bg-opacity-80 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isCapturing ? 'Capturing...' : 'Select This Frame'}
-            </button>
+          <div className="flex justify-between text-xs text-textColor opacity-70">
+            <span>{formatTime(currentTime)}</span>
+            <span>{formatTime(duration)}</span>
           </div>
-        </>
+        </div>
       )}
 
-      <style jsx>{`
-        .slider::-webkit-slider-thumb {
-          appearance: none;
-          width: 20px;
-          height: 20px;
-          border-radius: 50%;
-          background: #4f46e5;
-          cursor: pointer;
-          border: 2px solid #ffffff;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        }
-
-        .slider::-moz-range-thumb {
-          width: 20px;
-          height: 20px;
-          border-radius: 50%;
-          background: #4f46e5;
-          cursor: pointer;
-          border: 2px solid #ffffff;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        }
-      `}</style>
+      <div className="w-full flex flex-col gap-[8px]">
+        <button
+          onClick={captureFrame}
+          disabled={!isLoaded || isCapturing}
+          className="w-full bg-forth text-white px-6 py-3 rounded-[12px] font-[600] hover:bg-opacity-80 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isCapturing ? 'Capturing...' : 'Use this frame'}
+        </button>
+        <button
+          onClick={() => fileRef.current?.click()}
+          className="w-full bg-third text-textColor px-6 py-3 rounded-[12px] font-[600] border border-tableBorder hover:bg-opacity-80 transition-all"
+        >
+          Add from camera roll
+        </button>
+        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={fromCameraRoll} />
+      </div>
     </div>
   );
 };
@@ -397,13 +399,13 @@ export const MediaComponentInner: FC<{
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex space-x-2 mt-[12px]">
+                <div className="flex flex-col sm:flex-row gap-[8px] mt-[12px]">
                   <button
                     disabled={loading}
                     onClick={() => setIsEditingThumbnail(true)}
                     className="bg-third text-textColor px-6 py-2 rounded-lg hover:bg-opacity-80 transition-all flex-1 border border-tableBorder whitespace-nowrap"
                   >
-                    Select Frame
+                    Choose from video
                   </button>
                   <button
                     disabled={loading}
@@ -478,7 +480,7 @@ export const MediaComponentInner: FC<{
 
                 {/* Thumbnail Editor */}
                 <CreateThumbnail
-                  onSelect={(blob: Blob, timestampMs: number) => {
+                  onSelect={(blob: Blob, timestampMs: number | null) => {
                     // Convert blob to base64 or handle as needed
                     const reader = new FileReader();
                     reader.onload = () => {
