@@ -1086,6 +1086,34 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
         });
       }
 
+      // Freya: watch time, % watched, new subscribers and shares from the YouTube Analytics API
+      // (yt-analytics.readonly is already in the scopes). Its numbers lag a day or two; until then none are added.
+      try {
+        const q = new URLSearchParams({
+          ids: 'channel==MINE',
+          startDate: '2020-01-01',
+          endDate: today,
+          metrics: 'averageViewDuration,averageViewPercentage,estimatedMinutesWatched,subscribersGained,shares',
+          filters: `video==${postId}`,
+        });
+        const rep = await (
+          await fetch(`https://youtubeanalytics.googleapis.com/v2/reports?${q}`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          })
+        ).json();
+        const row = rep?.rows?.[0];
+        if (row) {
+          const labels = ['Avg watch (s)', 'Avg % watched', 'Watch time (min)', 'Follows', 'Shares'];
+          row.forEach((v: number, i: number) =>
+            result.push({ label: labels[i], percentageChange: 0, data: [{ total: String(Math.round(v * 10) / 10), date: today }] })
+          );
+        } else if (rep?.error) {
+          console.warn('YouTube Analytics report failed:', rep.error.message);
+        }
+      } catch (e) {
+        console.warn('YouTube Analytics report failed:', e);
+      }
+
       return result;
     } catch (err: any) {
       // Expired or revoked token, checkPostAnalytics refreshes it and retries once

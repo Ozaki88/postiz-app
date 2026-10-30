@@ -1348,6 +1348,31 @@ export class InstagramProvider
         }
       }
 
+      // Freya: watch time and follows. Asked one metric per request, because Graph fails the whole request on a
+      // metric this media type does not have (e.g. watch time on a photo); a missing one is simply left out.
+      const extras: [string, string, (v: number) => number][] = [
+        ['ig_reels_avg_watch_time', 'Avg watch (s)', (v) => Math.round(v / 100) / 10],
+        ['ig_reels_video_view_total_time', 'Watch time (min)', (v) => Math.round(v / 6000) / 10],
+        ['follows', 'Follows', (v) => v],
+        ['profile_visits', 'Profile visits', (v) => v],
+      ];
+      const more = await Promise.all(
+        extras.map(async ([metric, label, conv]) => {
+          try {
+            const r = await (
+              await fetch(
+                `https://${type}/${META_GRAPH_API_VERSION}/${postId}/insights?metric=${metric}&access_token=${accessToken}`
+              )
+            ).json();
+            const v = r?.data?.[0]?.values?.[0]?.value;
+            return typeof v === 'number' ? { label, percentageChange: 0, data: [{ total: String(conv(v)), date: today }] } : null;
+          } catch {
+            return null;
+          }
+        })
+      );
+      result.push(...(more.filter(Boolean) as AnalyticsData[]));
+
       return result;
     } catch (err) {
       console.error('Error fetching Instagram post analytics:', err);

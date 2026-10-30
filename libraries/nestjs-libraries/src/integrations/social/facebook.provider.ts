@@ -1328,11 +1328,15 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
           case 'post_video_social_actions':
             // This returns an object with action types (comments, shares)
             if (typeof value === 'object') {
-              const totalActions = Object.values(
-                value as Record<string, number>
-              ).reduce((sum: number, v: number) => sum + v, 0);
+              const actions = value as Record<string, number>;
+              const totalActions = Object.values(actions).reduce((sum: number, v: number) => sum + v, 0);
               label = 'Engagement';
               total = String(totalActions);
+              // Freya: comments and shares on their own too.
+              for (const [k, l] of [['COMMENT', 'Comments'], ['SHARE', 'Shares']]) {
+                const n = Object.entries(actions).find(([key]) => key.toUpperCase() === k)?.[1];
+                if (typeof n === 'number') result.push({ label: l, percentageChange: 0, data: [{ total: String(n), date: today }] });
+              }
             }
             break;
         }
@@ -1345,6 +1349,31 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
           });
         }
       }
+
+      // Freya: reach, watch time and new followers. One metric per request, because Graph fails the whole request
+      // on a metric this video does not have; a missing one is simply left out.
+      const extras: [string, string, (v: number) => number][] = [
+        ['post_impressions_unique', 'Reach', (v) => v],
+        ['post_video_avg_time_watched', 'Avg watch (s)', (v) => Math.round(v / 100) / 10],
+        ['post_video_view_time', 'Watch time (min)', (v) => Math.round(v / 6000) / 10],
+        ['post_video_followers', 'Follows', (v) => v],
+      ];
+      const more = await Promise.all(
+        extras.map(async ([metric, label, conv]) => {
+          try {
+            const r = await (
+              await fetch(
+                `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${videoId}/video_insights?metric=${metric}&access_token=${accessToken}`
+              )
+            ).json();
+            const v = r?.data?.[0]?.values?.[0]?.value;
+            return typeof v === 'number' ? { label, percentageChange: 0, data: [{ total: String(conv(v)), date: today }] } : null;
+          } catch {
+            return null;
+          }
+        })
+      );
+      result.push(...(more.filter(Boolean) as AnalyticsData[]));
 
       return result;
     } catch (err) {
