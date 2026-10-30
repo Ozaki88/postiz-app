@@ -27,6 +27,13 @@ import { ChangeDirClient } from '@gitroom/frontend/components/new-layout/change.
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const cookieStore = await cookies();
   const language = cookieStore.get(cookieName)?.value || fallbackLng;
+  // Freya: start every page (sign-in too) in the theme picked in the top bar (cookie `theme`, Aurora Glass by
+  // default), so it is themed before the picker loads. Same ids as components/layout/mode.component.tsx.
+  const THEME_BODY: Record<string, string> = {
+    aurora: 'dark skin-aurora', neon: 'dark skin-neon', sunset: 'dark skin-sunset', luxe: 'light skin-luxe',
+    dark: 'dark', light: 'light',
+  };
+  const themeBody = THEME_BODY[cookieStore.get('theme')?.value || 'aurora'] || THEME_BODY.aurora;
   const Plausible = !!process.env.STRIPE_PUBLISHABLE_KEY
     ? PlausibleProvider
     : Fragment;
@@ -45,7 +52,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       </head>
       <ChangeDirClient />
       <body
-        className={clsx(jakartaSans.className, 'dark text-primary !bg-primary')}
+        className={clsx(jakartaSans.className, themeBody, 'text-primary !bg-primary')}
       >
         <VariableContextComponent
           storageProvider={
