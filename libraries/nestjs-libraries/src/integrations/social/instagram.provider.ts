@@ -1204,7 +1204,6 @@ export class InstagramProvider
     analytics.push(
       ...(data?.map((d: any) => ({
         label: this.setTitle(d.name),
-        percentageChange: 5,
         data: d.values.map((v: any) => ({
           total: v.value,
           date: dayjs(v.end_time).format('YYYY-MM-DD'),
@@ -1215,7 +1214,6 @@ export class InstagramProvider
     analytics.push(
       ...data2.map((d: any) => ({
         label: this.setTitle(d.name),
-        percentageChange: 5,
         data: [
           {
             total: d.total_value.value,
@@ -1224,6 +1222,31 @@ export class InstagramProvider
         ],
       }))
     );
+
+    // Freya: the other account totals Instagram has, one per request so a missing one cannot empty the page.
+    const extras: [string, string][] = [
+      ['accounts_engaged', 'Accounts engaged'],
+      ['total_interactions', 'Interactions'],
+      ['profile_links_taps', 'Link taps'],
+      ['reposts', 'Reposts'],
+      ['profile_views', 'Profile views'],
+    ];
+    const more = await Promise.all(
+      extras.map(async ([metric, label]) => {
+        try {
+          const r = await (
+            await fetch(
+              `https://${type}/${META_GRAPH_API_VERSION}/${id}/insights?metric_type=total_value&metric=${metric}&access_token=${accessToken}&period=day&since=${since}&until=${until}`
+            )
+          ).json();
+          const v = r?.data?.[0]?.total_value?.value;
+          return typeof v === 'number' ? { label, data: [{ total: v, date: dayjs().format('YYYY-MM-DD') }] } : null;
+        } catch {
+          return null;
+        }
+      })
+    );
+    analytics.push(...more.filter(Boolean));
 
     return analytics;
   }
@@ -1355,6 +1378,11 @@ export class InstagramProvider
         ['ig_reels_video_view_total_time', 'Watch time (min)', (v) => Math.round(v / 6000) / 10],
         ['follows', 'Follows', (v) => v],
         ['profile_visits', 'Profile visits', (v) => v],
+        ['total_interactions', 'Interactions', (v) => v],
+        ['reels_skip_rate', 'Skip rate %', (v) => Math.round(v * 10) / 10],
+        ['reposts', 'Reposts', (v) => v],
+        ['crossposted_views', 'Crossposted views', (v) => v],
+        ['facebook_views', 'Facebook views', (v) => v],
       ];
       const more = await Promise.all(
         extras.map(async ([metric, label, conv]) => {

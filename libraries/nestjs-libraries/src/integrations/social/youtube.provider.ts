@@ -956,7 +956,7 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
         startDate,
         endDate,
         metrics:
-          'views,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,subscribersGained,likes,subscribersLost',
+          'views,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,subscribersGained,likes,subscribersLost,shares,comments',
         dimensions: 'day',
         sort: 'day',
       });
@@ -970,6 +970,10 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
       });
 
       const acc = [] as any[];
+      // Freya: views, shares and comments too (views was already fetched but never shown).
+      for (const [key, label] of [['views', 'Views'], ['shares', 'Shares'], ['comments', 'Comments']]) {
+        acc.push({ label, data: mappedData?.map((p: any) => ({ total: p[key], date: p.day })) });
+      }
       acc.push({
         label: 'Estimated Minutes Watched',
         data: mappedData?.map((p: any) => ({
@@ -1112,6 +1116,50 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
         }
       } catch (e) {
         console.warn('YouTube Analytics report failed:', e);
+      }
+
+      // Freya: everything else YouTube Analytics has for one video. Each report is asked on its own, so one the
+      // channel cannot get (or one with no data yet) is simply left out.
+      const report = async (params: Record<string, string>) => {
+        try {
+          const q = new URLSearchParams({ ids: 'channel==MINE', startDate: '2020-01-01', endDate: today, filters: `video==${postId}`, ...params });
+          const r = await (
+            await fetch(`https://youtubeanalytics.googleapis.com/v2/reports?${q}`, { headers: { Authorization: `Bearer ${accessToken}` } })
+          ).json();
+          return r?.rows || null;
+        } catch {
+          return null;
+        }
+      };
+      const one = async (metric: string, label: string) => {
+        const rows = await report({ metrics: metric });
+        if (rows?.[0]?.[0] != null) result.push({ label, percentageChange: 0, data: [{ total: String(Math.round(rows[0][0] * 10) / 10), date: today }] });
+      };
+      await Promise.all([
+        one('engagedViews', 'Engaged views'),
+        one('subscribersLost', 'Unfollows'),
+        one('dislikes', 'Dislikes'),
+        one('videosAddedToPlaylists', 'Playlist adds'),
+      ]);
+      // Retention: share of viewers still watching at each point (date = % of the video, total = % still watching;
+      // Shorts that loop can go above 100).
+      const curve = await report({ metrics: 'audienceWatchRatio', dimensions: 'elapsedVideoTimeRatio', sort: 'elapsedVideoTimeRatio' });
+      if (curve?.length) {
+        result.push({
+          label: 'Retention',
+          percentageChange: 0,
+          data: curve.map((r: number[]) => ({ date: String(Math.round(r[0] * 100)), total: String(Math.round(r[1] * 1000) / 10) })),
+        });
+      }
+      // Where the views came from.
+      const SOURCES: Record<string, string> = {
+        SHORTS: 'Shorts feed', YT_SEARCH: 'YouTube search', SUBSCRIBER: 'Subscriptions', RELATED_VIDEO: 'Suggested videos',
+        EXT_URL: 'Other websites', NO_LINK_OTHER: 'Direct or unknown', YT_CHANNEL: 'Channel page', YT_OTHER_PAGE: 'Other YouTube pages',
+        PLAYLIST: 'Playlists', NOTIFICATION: 'Notifications', END_SCREEN: 'End screens', HASHTAGS: 'Hashtags', SOUND_PAGE: 'Sound page',
+      };
+      const traffic = await report({ metrics: 'views', dimensions: 'insightTrafficSourceType', sort: '-views' });
+      for (const [src, views] of traffic || []) {
+        result.push({ label: `From: ${SOURCES[src] || src}`, percentageChange: 0, data: [{ total: String(views), date: today }] });
       }
 
       return result;

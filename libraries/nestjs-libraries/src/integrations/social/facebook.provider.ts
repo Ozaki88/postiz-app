@@ -1138,8 +1138,38 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
       return Number(value) || 0;
     };
 
-    return (
-      data?.map((d: any) => ({
+    // Freya: every other page metric Meta still has, one per request so a retired one cannot empty the page.
+    // No percentageChange: Postiz used to show a made-up "5%" on every card.
+    const extras: [string, string, (v: number) => number][] = [
+      ['page_daily_unfollows_unique', 'Unfollows', (v) => v],
+      ['page_follows', 'Total followers', (v) => v],
+      ['page_views_total', 'Page visits', (v) => v],
+      ['page_actions_post_reactions_total', 'Reactions', (v) => v],
+      ['page_video_view_time', 'Video watch time (min)', (v) => Math.round(v / 6000) / 10],
+      ['page_posts_impressions_organic_unique', 'Organic reach', (v) => v],
+    ];
+    const more = await Promise.all(
+      extras.map(async ([metric, label, conv]) => {
+        try {
+          const r = await (
+            await fetch(
+              `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${id}/insights?metric=${metric}&access_token=${accessToken}&period=day&since=${since}&until=${until}`
+            )
+          ).json();
+          const values = r?.data?.[0]?.values;
+          if (!values?.length) return null;
+          return {
+            label,
+            data: values.map((v: any) => ({ total: conv(sumValue(v.value)), date: dayjs(v.end_time).format('YYYY-MM-DD') })),
+          };
+        } catch {
+          return null;
+        }
+      })
+    );
+
+    return [
+      ...(data?.map((d: any) => ({
         label:
           d.name === 'page_total_media_view_unique'
             ? 'Page Impressions'
@@ -1148,13 +1178,13 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
             : d.name === 'page_daily_follows'
             ? 'Page followers'
             : 'Media views',
-        percentageChange: 5,
         data: d?.values?.map((v: any) => ({
           total: sumValue(v.value),
           date: dayjs(v.end_time).format('YYYY-MM-DD'),
         })),
-      })) || []
-    );
+      })) || []),
+      ...(more.filter(Boolean) as any[]),
+    ];
   }
 
   async postAnalytics(
@@ -1357,6 +1387,10 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
         ['post_video_avg_time_watched', 'Avg watch (s)', (v) => Math.round(v / 100) / 10],
         ['post_video_view_time', 'Watch time (min)', (v) => Math.round(v / 6000) / 10],
         ['post_video_followers', 'Follows', (v) => v],
+        ['blue_reels_play_count', 'Initial plays', (v) => v],
+        ['fb_reels_replay_count', 'Replays', (v) => v],
+        ['post_video_views_organic', 'Organic views', (v) => v],
+        ['post_video_complete_views_organic', 'Watched to the end', (v) => v],
       ];
       const more = await Promise.all(
         extras.map(async ([metric, label, conv]) => {
@@ -1374,6 +1408,28 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
         })
       );
       result.push(...(more.filter(Boolean) as AnalyticsData[]));
+
+      // Freya: the retention curve, { second or bucket: share of viewers still watching }, as one series where
+      // date is the position (0-100 % of the video) and total is the % still watching.
+      try {
+        const r = await (
+          await fetch(
+            `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${videoId}/video_insights?metric=post_video_retention_graph&access_token=${accessToken}`
+          )
+        ).json();
+        const curve = r?.data?.[0]?.values?.[0]?.value;
+        if (curve && typeof curve === 'object') {
+          const keys = Object.keys(curve).map(Number).filter((k) => !isNaN(k)).sort((a, b) => a - b);
+          const last = keys[keys.length - 1] || 1;
+          result.push({
+            label: 'Retention',
+            percentageChange: 0,
+            data: keys.map((k) => ({ date: String(Math.round((k / last) * 100)), total: String(Math.round(Number(curve[k]) * 1000) / 10) })),
+          });
+        }
+      } catch {
+        // no curve for this video
+      }
 
       return result;
     } catch (err) {
