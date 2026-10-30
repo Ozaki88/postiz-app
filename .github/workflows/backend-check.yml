@@ -1,0 +1,24 @@
+name: "Backend start check"
+
+# Starts the backend of this fork's image and of the official image with dummy settings, to compare how far each gets.
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["ghcr.io/ozaki88/postiz-app:freya", "ghcr.io/gitroomhq/postiz-app:v2.11.3"]
+    steps:
+      - name: Start backend for 60 s
+        run: |
+          docker pull "${{ matrix.image }}"
+          docker run --rm -e DATABASE_URL=postgresql://u:p@127.0.0.1:5432/db -e REDIS_URL=redis://127.0.0.1:6379 \
+            -e JWT_SECRET=x -e FRONTEND_URL=http://localhost -e MAIN_URL=http://localhost -e BACKEND_INTERNAL_URL=http://localhost:3000 \
+            -w /app/apps/backend "${{ matrix.image }}" \
+            sh -c 'ls dist/apps/backend/src/main.js; timeout 60 node --experimental-require-module ./dist/apps/backend/src/main.js 2>&1 | tail -60; echo "exit $?"' || true
+      - name: Package versions
+        run: |
+          docker run --rm -w /app "${{ matrix.image }}" sh -c 'node -v; for p in @prisma/client @nestjs/core sharp; do node -e "try{console.log(\"$p\", require(require.resolve(\"$p/package.json\",{paths:[\"/app/apps/backend\",\"/app\"]})).version)}catch(e){console.log(\"$p\", e.message.split(\"\\n\")[0])}"; done'
