@@ -14,7 +14,7 @@ interface Place {
 // next post (Facebook and Instagram share it), so one search covers both.
 const REMEMBER = 'postpilot-location';
 const HINT =
-  ' You can paste the Facebook Page link or Page id of the place instead.';
+  ' Paste the place’s Facebook Page id instead (on facebook.com open the place’s Page → About → Page transparency → Page ID). New York, New York is 108424279189115.';
 const remembered = (): Place | undefined => {
   try {
     const v = JSON.parse(localStorage.getItem(REMEMBER) || 'null');
@@ -157,7 +157,8 @@ export const LocationPicker: FC<{
           {results && !results.length && !error && (
             <div className="text-[12px] opacity-70">
               No places found. Try the city name, or paste the place&apos;s
-              Facebook Page link or Page id.
+              Facebook Page id (facebook.com &rarr; the place&apos;s Page &rarr;
+              About &rarr; Page transparency &rarr; Page ID).
             </div>
           )}
           {!!results?.length && (

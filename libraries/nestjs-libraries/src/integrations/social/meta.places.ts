@@ -37,7 +37,23 @@ export async function searchMetaPlaces(
   const direct = directLookup(query);
   if (direct) {
     const url = `${base}/${encodeURIComponent(direct)}?fields=${fields}&${auth}`;
-    return toPlaces(await graph(url), 'lookup');
+    const out = toPlaces(await graph(url), 'lookup');
+    // Reading a Page the user does not manage is gated behind Meta's
+    // "Page Public Metadata Access" feature (App Review). A pasted id is
+    // still usable for tagging, so hand it back unverified instead of failing.
+    if (!Array.isArray(out) && /^\d+$/.test(direct)) {
+      console.warn('[placeSearch] unverified Page id', direct, out.error);
+      return [
+        {
+          id: direct,
+          name: `Facebook Page ${direct}`,
+          where:
+            'Not checked: Meta does not let this app read the Page. ' +
+            'Posting works if the Page has a location.',
+        },
+      ];
+    }
+    return out;
   }
 
   const routes: Array<[string, string]> = [
