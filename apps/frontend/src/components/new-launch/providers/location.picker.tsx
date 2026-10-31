@@ -66,7 +66,7 @@ export const LocationPicker: FC<{
   }, []);
 
   const search = useCallback(async () => {
-    if (!query.trim()) return;
+    if (query.trim().length < 2) return;
     setLoading(true);
     setError('');
     try {
@@ -74,13 +74,22 @@ export const LocationPicker: FC<{
       setResults(Array.isArray(list) ? list : []);
     } catch (e: any) {
       setResults([]);
+      // Meta's own reason (e.g. a missing permission), so it can be fixed.
+      const why = e?.message || e?.error || '';
       setError(
-        'Search is not allowed for this channel. Pick the place on Instagram, or paste the Facebook Page id of the place.'
+        'Place search failed' + (why ? ': ' + why : '') + '. You can paste the Facebook Page id of the place instead.'
       );
     } finally {
       setLoading(false);
     }
   }, [query, customFunc]);
+
+  // Search as you type (after a short pause), so it works without pressing Search.
+  useEffect(() => {
+    if (query.trim().length < 3) return;
+    const t = setTimeout(() => search(), 600);
+    return () => clearTimeout(t);
+  }, [query]);
 
   const pick = (p: Place) => {
     remember(p);
@@ -109,9 +118,9 @@ export const LocationPicker: FC<{
         </div>
       ) : (
         <>
-          <div className="flex gap-[8px]">
+          <div className="flex w-full items-center gap-[8px]">
             <input
-              className="flex-1 h-[40px] rounded-[8px] border border-newTableBorder bg-newBgColorInner px-[12px] outline-none"
+              className="flex-1 min-w-0 h-[40px] rounded-[8px] border border-newTableBorder bg-newBgColorInner px-[12px] outline-none"
               placeholder="City or place, e.g. New York"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -124,7 +133,7 @@ export const LocationPicker: FC<{
             />
             <button
               type="button"
-              className="h-[40px] px-[16px] rounded-[8px] bg-btnSimple"
+              className="shrink-0 whitespace-nowrap h-[40px] px-[16px] rounded-[8px] bg-btnSimple border border-newTableBorder"
               onClick={search}
               disabled={loading}
             >
