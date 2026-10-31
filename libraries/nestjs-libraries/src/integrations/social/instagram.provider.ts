@@ -1283,11 +1283,21 @@ export class InstagramProvider
   })
   async placeSearch(token: string, data: { q?: string }) {
     const [accessToken, userToken] = token.split('___');
-    return searchMetaPlaces(
+    const first = await searchMetaPlaces(
       META_GRAPH_API_VERSION,
       userToken || accessToken,
       data?.q || ''
     );
+    if (Array.isArray(first) || !userToken) {
+      return first;
+    }
+    // The user token was refused: the Page token may still be allowed.
+    const second = await searchMetaPlaces(
+      META_GRAPH_API_VERSION,
+      accessToken,
+      data?.q || ''
+    );
+    return Array.isArray(second) && second.length ? second : first;
   }
 
   // https://developers.facebook.com/docs/instagram-platform/content-publishing/audio-api/

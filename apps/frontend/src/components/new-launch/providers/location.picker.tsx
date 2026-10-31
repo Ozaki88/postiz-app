@@ -13,6 +13,8 @@ interface Place {
 // The last place picked is remembered in this browser and pre-filled on the
 // next post (Facebook and Instagram share it), so one search covers both.
 const REMEMBER = 'postpilot-location';
+const HINT =
+  ' You can paste the Facebook Page link or Page id of the place instead.';
 const remembered = (): Place | undefined => {
   try {
     const v = JSON.parse(localStorage.getItem(REMEMBER) || 'null');
@@ -71,14 +73,25 @@ export const LocationPicker: FC<{
     setError('');
     try {
       const list = await customFunc.get('placeSearch', { q: query });
-      setResults(Array.isArray(list) ? list : []);
+      if (Array.isArray(list)) {
+        setResults(list);
+      } else {
+        // The backend answers { error } with Meta's reason, or false when
+        // the channel itself was refused.
+        setResults([]);
+        const why = list?.error || '';
+        setError(
+          why
+            ? 'Meta refused the search: ' + why + HINT
+            : 'The channel refused the search. Reconnect it in Settings, or' +
+                HINT
+        );
+      }
     } catch (e: any) {
       setResults([]);
       // Meta's own reason (e.g. a missing permission), so it can be fixed.
       const why = e?.message || e?.error || '';
-      setError(
-        'Place search failed' + (why ? ': ' + why : '') + '. You can paste the Facebook Page id of the place instead.'
-      );
+      setError('Place search failed' + (why ? ': ' + why : '') + '.' + HINT);
     } finally {
       setLoading(false);
     }
@@ -121,7 +134,7 @@ export const LocationPicker: FC<{
           <div className="flex w-full items-center gap-[8px]">
             <input
               className="flex-1 min-w-0 h-[40px] rounded-[8px] border border-newTableBorder bg-newBgColorInner px-[12px] outline-none"
-              placeholder="City or place, e.g. New York"
+              placeholder="City or place (e.g. New York), a Facebook Page link, or a Page id"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
@@ -143,7 +156,8 @@ export const LocationPicker: FC<{
           {error && <div className="text-[12px] text-red-400">{error}</div>}
           {results && !results.length && !error && (
             <div className="text-[12px] opacity-70">
-              No places found. Try the city name, or paste a Facebook Page id.
+              No places found. Try the city name, or paste the place&apos;s
+              Facebook Page link or Page id.
             </div>
           )}
           {!!results?.length && (
