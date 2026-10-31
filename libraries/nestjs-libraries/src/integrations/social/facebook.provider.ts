@@ -7,6 +7,8 @@ import {
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
+import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
+import { searchMetaPlaces } from '@gitroom/nestjs-libraries/integrations/social/meta.places';
 import dayjs from 'dayjs';
 import {
   BadBody,
@@ -393,6 +395,23 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
       picture: picture?.data?.url || '',
       username: '',
     };
+  }
+
+  // The page token may not be allowed to search Pages; a numeric Page id
+  // still works, and the editor reuses a place found from Instagram.
+  @Tool({
+    description:
+      'Search places (Facebook Pages with a location) to tag as the post location via the "location" setting',
+    dataSchema: [
+      {
+        key: 'q',
+        type: 'string',
+        description: 'Place name, e.g. "New York", or a Facebook Page id',
+      },
+    ],
+  })
+  async placeSearch(accessToken: string, data: { q?: string }) {
+    return searchMetaPlaces(META_GRAPH_API_VERSION, accessToken, data?.q || '');
   }
 
   @DashboardFunction()
@@ -835,6 +854,8 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
     postDetails: PostDetails<FacebookDto>[]
   ): Promise<PostResponse[]> {
     const [firstPost] = postDetails;
+    // Tagged location: a Facebook Page id with a physical location.
+    const place = firstPost?.settings?.location?.id;
 
     let finalId = '';
     let finalUrl = '';
@@ -872,6 +893,7 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
             video_id,
             video_state: 'PUBLISHED',
             description: firstPost.message,
+            ...(place ? { place } : {}),
           }),
         },
         'publish reel'
@@ -912,6 +934,7 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
               ...(firstPost?.settings?.title
                 ? { title: firstPost.settings.title }
                 : {}),
+              ...(place ? { place } : {}),
               published: true,
             }),
           },
@@ -990,6 +1013,7 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
                 ...(withPreset && presetId
                   ? { text_format_preset_id: presetId }
                   : {}),
+                ...(place ? { place } : {}),
                 message: firstPost.message,
                 published: true,
               }),

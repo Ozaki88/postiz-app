@@ -16,6 +16,7 @@ import { useIntegration } from '@gitroom/frontend/components/launches/helpers/us
 import { FacebookPreview } from '@gitroom/frontend/components/new-launch/providers/facebook/facebook.preview';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useEffect } from 'react';
+import { LocationPicker } from '@gitroom/frontend/components/new-launch/providers/location.picker';
 
 const postType = [
   {
@@ -71,6 +72,10 @@ export const FacebookSettings = () => {
           ))}
         </Select>
       </div>
+
+      {postCurrentType !== 'story' && (
+        <LocationPicker {...register('location')} />
+      )}
 
       {postCurrentType !== 'story' && postCurrentType !== 'reel' && (
         <>

@@ -1,4 +1,5 @@
-import { IsIn, IsOptional, IsString, ValidateIf, IsUrl } from 'class-validator';
+import { IsDefined, IsIn, IsOptional, IsString, ValidateIf, IsUrl, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { JSONSchema } from 'class-validator-jsonschema';
 
 // Maximum characters Facebook allows on a background ("text format") post.
@@ -93,6 +94,18 @@ export const FACEBOOK_PRESETS: FacebookPreset[] = [
   { id: '1365883126823705', name: 'Solid blue' },
 ];
 
+// A tagged location: the id of a Facebook Page with a physical location
+// (shared by Facebook and Instagram), plus its name for the editor.
+export class PostLocation {
+  @IsDefined()
+  @IsString()
+  id: string;
+
+  @IsOptional()
+  @IsString()
+  name?: string;
+}
+
 export class FacebookDto {
   @IsOptional()
   @ValidateIf(p => p.url)
@@ -116,4 +129,9 @@ export class FacebookDto {
     description: 'Title of the video, used only for video (non-story) posts',
   })
   title?: string;
+
+  @Type(() => PostLocation)
+  @ValidateNested()
+  @IsOptional()
+  location?: PostLocation;
 }

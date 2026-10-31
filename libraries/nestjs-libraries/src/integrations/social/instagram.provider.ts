@@ -19,6 +19,7 @@ import { InstagramDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-set
 import { Integration } from '@prisma/client';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 import { META_GRAPH_API_VERSION } from '@gitroom/nestjs-libraries/integrations/social/facebook.provider';
+import { searchMetaPlaces } from '@gitroom/nestjs-libraries/integrations/social/meta.places';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 import { DashboardFunction } from '@gitroom/nestjs-libraries/integrations/dashboard.function.decorator';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
@@ -809,9 +810,18 @@ export class InstagramProvider
               )}`
             : ``;
 
+        // A tagged place (a Facebook Page with a location) goes on single
+        // posts and Reels; Meta does not take it on stories or carousel items.
+        const locationParam =
+          firstPost?.settings?.location?.id &&
+          !isStory &&
+          firstPost?.media?.length === 1
+            ? `&location_id=${encodeURIComponent(firstPost.settings.location.id)}`
+            : ``;
+
         const { id: photoId } = await (
           await this.fetch(
-            `https://${type}/${META_GRAPH_API_VERSION}/${id}/media?${mediaType}${isCarousel}${itemCollaborators}${trialParams}${audioConfiguration}&access_token=${accessToken}${caption}`,
+            `https://${type}/${META_GRAPH_API_VERSION}/${id}/media?${mediaType}${isCarousel}${itemCollaborators}${trialParams}${audioConfiguration}${locationParam}&access_token=${accessToken}${caption}`,
             {
               method: 'POST',
             }
@@ -1256,6 +1266,27 @@ export class InstagramProvider
       `https://graph.facebook.com/${META_GRAPH_API_VERSION}/music/search?q=${encodeURIComponent(
         data.q
       )}&access_token=${accessToken}`
+    );
+  }
+
+  // Pages Search needs a user token, which this login keeps after the page token.
+  @Tool({
+    description:
+      'Search places (Facebook Pages with a location) to tag as the post location via the "location" setting',
+    dataSchema: [
+      {
+        key: 'q',
+        type: 'string',
+        description: 'Place name, e.g. "New York", or a Facebook Page id',
+      },
+    ],
+  })
+  async placeSearch(token: string, data: { q?: string }) {
+    const [accessToken, userToken] = token.split('___');
+    return searchMetaPlaces(
+      META_GRAPH_API_VERSION,
+      userToken || accessToken,
+      data?.q || ''
     );
   }
 

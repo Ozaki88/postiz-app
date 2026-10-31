@@ -10,6 +10,7 @@ import {
   ValidateNested,
   IsOptional,
 } from 'class-validator';
+import { PostLocation } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/facebook.dto';
 
 export class Collaborators {
   @IsDefined()
@@ -70,4 +71,9 @@ export class InstagramDto {
   @ValidateNested()
   @IsOptional()
   audio?: InstagramAudio;
+
+  @Type(() => PostLocation)
+  @ValidateNested()
+  @IsOptional()
+  location?: PostLocation;
 }

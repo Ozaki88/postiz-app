@@ -11,6 +11,7 @@ import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.v
 import { InstagramDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/instagram.dto';
 import { InstagramCollaboratorsTags } from '@gitroom/frontend/components/new-launch/providers/instagram/instagram.tags';
 import { InstagramAudioSelector } from '@gitroom/frontend/components/new-launch/providers/instagram/instagram.audio';
+import { LocationPicker } from '@gitroom/frontend/components/new-launch/providers/location.picker';
 import { useIntegration } from '@gitroom/frontend/components/launches/helpers/use.integration';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { InstagramPreview } from '@gitroom/frontend/components/new-launch/providers/instagram/instagram.preview';
@@ -81,6 +82,10 @@ const InstagramCollaborators: FC<{
             {...register('audio')}
           />
         </div>
+      )}
+
+      {postCurrentType === 'post' && supportsAudio && (
+        <LocationPicker {...register('location')} />
       )}
 
       {postCurrentType === 'post' && (
